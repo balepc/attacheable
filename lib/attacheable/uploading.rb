@@ -38,13 +38,13 @@ module Attacheable
         if file_type
           self.width = width if(respond_to?(:width=))
           self.height = height if(respond_to?(:height=))
-          self.content_type ||= file_type
+          self.content_type = file_type
         end
       end
       if content_type =~ /video\//
         width, height = identify_video_properties(@tempfile.path)
-        self.width = width
-        self.height = height
+        self.width = width if(respond_to?(:width=))
+        self.height = height if(respond_to?(:height=))
         self.content_type ||= "application/octet-stream"
       end
       content_type
@@ -67,7 +67,7 @@ module Attacheable
     
     def identify_video_properties(path)
       return [nil, nil] if path.blank?
-      ouput = nil
+      output = nil
       silence_stderr do 
         output = `ffmpeg -i "#{path}"`
       end
@@ -78,8 +78,10 @@ module Attacheable
     
     def accepts_file_type_for_upload?(file_type)
       return false unless @tempfile
+      return true if attachment_options[:valid_filetypes].blank?
       return true if attachment_options[:valid_filetypes] == :all
-      return true if attachment_options[:valid_filetypes].include?(file_type)
+      return true if attachment_options[:valid_filetypes].include?(file_type.to_s.split("/").last)
+      false
     end
     
     def handle_uploaded_file

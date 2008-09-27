@@ -191,12 +191,18 @@ module Attacheable
   end
 
   def create_thumbnail(thumbnail, thumbnail_path)
-    return nil unless File.exists?(thumbnail_source_filename(thumbnail))
+    source = thumbnail_source_filename(thumbnail)
+    return nil unless File.exists?(source)
     return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
+    if content_type =~ /video\// && source == full_filename
+      raw_file = File.dirname(source) + "raw.jpg"
+      `ffmpeg -i #{full_filename} -vframes 1 -f image2 -y -an -ss 00:00:00 -t 00:00:01 -r 1 #{raw_file}`
+      source = raw_file
+    end
     if attachment_options[:thumbnails][thumbnail.to_sym].blank?
-      `convert "#{thumbnail_source_filename(thumbnail)}"[0] -colorspace rgb "#{thumbnail_path}"`
+      `convert "#{source}"[0] -colorspace rgb "#{thumbnail_path}"`
     else
-      `convert "#{thumbnail_source_filename(thumbnail)}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" -colorspace rgb "#{thumbnail_path}"`
+      `convert "#{source}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" -colorspace rgb "#{thumbnail_path}"`
     end
     thumbnail_path
   end

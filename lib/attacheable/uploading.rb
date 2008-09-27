@@ -59,8 +59,8 @@ module Attacheable
       end
       if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
         file_type = "image/#{match_data[1].to_s.downcase}"
-        width = match_data[2]
-        height = match_data[3]
+        width = match_data[2].to_i
+        height = match_data[3].to_i
         return [file_type, width, height]
       end
     end
@@ -69,10 +69,11 @@ module Attacheable
       return [nil, nil] if path.blank?
       output = nil
       silence_stderr do 
-        output = `ffmpeg -i "#{path}"`
+        output = `ffmpeg -i "#{path}" 2>&1`
       end
-      if output && match_data = /Video: (\w+), (\d+)x(\d+)/.match(output)
-        return [match_data[2], match_data[3]]
+      output = output && output.split("\n").grep(/Video:/).first
+      if output && match_data = /Video: (.+), (\d+)x(\d+)/.match(output)
+        return [match_data[2].to_i, match_data[3].to_i]
       end
     end
     

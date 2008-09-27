@@ -1,6 +1,12 @@
 require File.dirname(__FILE__)+"/attacheable/file_naming"
 require File.dirname(__FILE__)+"/attacheable/uploading"
 require 'net/http'
+
+begin
+  require 'mime/types'
+rescue LoadError
+end
+
 class ActiveRecord::Base
   #
   # In model write has_attachment (conflicts with acts_as_attachment) with options:
@@ -196,7 +202,7 @@ module Attacheable
     return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
     if content_type =~ /video\// && source == full_filename
       raw_file = File.dirname(source) + "raw.jpg"
-      `ffmpeg -i #{full_filename} -vframes 1 -f image2 -y -an -ss 00:00:00 -t 00:00:01 -r 1 #{raw_file}`
+      `ffmpeg -i #{full_filename} -vframes 1 -f image2 -y -an -ss 00:00:00 -t 00:00:01 -r 1 #{raw_file} 2>&1`
       source = raw_file
     end
     if attachment_options[:thumbnails][thumbnail.to_sym].blank?

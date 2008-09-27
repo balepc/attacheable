@@ -276,6 +276,16 @@ class AttacheableTest < Test::Unit::TestCase
     assert image.destroy, "should be destroyable"
   end
   
+  def test_mime_type_detection
+    input = File.open(File.dirname(__FILE__)+"/fixtures/test.mov")
+    input.extend(TestUploadExtension)
+    input.content_type = "application/octet-stream"
+    assert_equal "test.mov", input.original_filename, "should look like uploaded file"
+    video = Video.new(:uploaded_data => input)
+    assert video.save!, "Video should be saved"
+    assert_equal "video/quicktime", video.content_type
+  end
+  
   def test_create_video_thumbnail
     input = File.open(File.dirname(__FILE__)+"/fixtures/test.mov")
     input.extend(TestUploadExtension)

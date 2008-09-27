@@ -32,8 +32,13 @@ module Attacheable
     def identify_uploaded_file_type
       return unless @tempfile
       self.content_type = @tempfile.content_type if @tempfile.respond_to?(:content_type)
+      
+      if content_type.blank? || content_type == "application/octet-stream" && defined?(MIME::Types)
+        mime = MIME::Types.type_for(filename).first
+        self.content_type = mime.simplified if mime
+      end
 
-      if content_type.blank? || content_type =~ /image\// || content_type == "application/octet-stream"
+      if content_type =~ /image\//
         file_type, width, height = identify_image_properties(@tempfile.path)
         if file_type
           self.width = width if(respond_to?(:width=))
@@ -45,7 +50,6 @@ module Attacheable
         width, height = identify_video_properties(@tempfile.path)
         self.width = width if(respond_to?(:width=))
         self.height = height if(respond_to?(:height=))
-        self.content_type ||= "application/octet-stream"
       end
       content_type
     end

@@ -78,7 +78,7 @@ module Attacheable
   end
 
 
-  def destroy_thumbnails!(thumbnail = nil)
+  def destroy_thumbnails(thumbnail = nil)
     return if filename.blank?
     if thumbnail
       FileUtils.rm_f(full_filename_without_creation(thumbnail))
@@ -109,7 +109,7 @@ module Attacheable
     def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values(send(:construct_finder_sql, :select => "id")).each do |object_id|
         object = find_by_id(object_id)
-        object.destroy_thumbnails!(thumbnail)
+        object.destroy_thumbnails(thumbnail)
       end
     end
   
@@ -176,7 +176,7 @@ module Attacheable
     thumbnail_path = full_filename_without_creation(thumbnail)
     return thumbnail_path unless thumbnail
     (return thumbnail_path if File.exists?(thumbnail_path)) unless attachment_options[:force_autocreate]
-    return nil unless /image\//.match(content_type)
+    #return nil unless /image\//.match(content_type)
     if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym)
       crop_and_thumbnail(thumbnail, thumbnail_path)
     else
@@ -185,11 +185,38 @@ module Attacheable
     after_create_thumbnail(thumbnail, thumbnail_path) if respond_to?(:after_create_thumbnail)
     thumbnail_path
   end
+  
+  def thumbnail_source_filename(thumbnail)
+    full_filename
+  end
 
   def create_thumbnail(thumbnail, thumbnail_path)
-    return nil unless File.exists?(full_filename)
+    return nil unless File.exists?(thumbnail_source_filename(thumbnail))
     return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
-    `convert "#{full_filename}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" "#{thumbnail_path}"`
+    if attachment_options[:thumbnails][thumbnail.to_sym].blank?
+      `convert "#{thumbnail_source_filename(thumbnail)}"[0] -colorspace rgb "#{thumbnail_path}"`
+    else
+      `convert "#{thumbnail_source_filename(thumbnail)}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" -colorspace rgb "#{thumbnail_path}"`
+    end
+    thumbnail_path
+  end
+
+  def crop_and_thumbnail(thumbnail, thumbnail_path)
+    file_type, width, height = identify_image_properties(thumbnail_source_filename(thumbnail))
+    album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
+    return nil unless album_x && album_y && width && height
+    scale_x = width.to_f / album_x
+    scale_y = height.to_f / album_y
+    if scale_x > scale_y
+      x, y = (album_x*scale_y).floor, height
+      shift_x, shift_y = (width.to_i - x)/2, 0
+    else
+      x, y = width, (album_y*scale_x).floor
+      shift_x, shift_y = 0, (height.to_i - y)/2
+    end
+#    FileUtils.cp(full_filename_without_creation, thumbnail_path)
+    `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{thumbnail_source_filename(thumbnail)}" "#{thumbnail_path}"`
+    `mogrify  -geometry #{album_x}x#{album_y} "#{thumbnail_path}"`
     thumbnail_path
   end
 
@@ -256,24 +283,6 @@ module Attacheable
   protected
 
 
-  def crop_and_thumbnail(thumbnail, thumbnail_path)
-    file_type, width, height = identify_image_properties(full_filename)
-    album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
-    return nil unless album_x && album_y && width && height
-    scale_x = width.to_f / album_x
-    scale_y = height.to_f / album_y
-    if scale_x > scale_y
-      x, y = (album_x*scale_y).floor, height
-      shift_x, shift_y = (width.to_i - x)/2, 0
-    else
-      x, y = width, (album_y*scale_x).floor
-      shift_x, shift_y = 0, (height.to_i - y)/2
-    end
-#    FileUtils.cp(full_filename_without_creation, thumbnail_path)
-    `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{full_filename}" "#{thumbnail_path}"`
-    `mogrify  -geometry #{album_x}x#{album_y} "#{thumbnail_path}"`
-    thumbnail_path
-  end
 
   # Destroys the file.  Called in the after_destroy callback
   def remove_files

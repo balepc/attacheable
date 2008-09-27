@@ -15,7 +15,7 @@ module Attacheable
       basename = filename.gsub /\.\w+$/ do |s|
         ext = s; ''
       end
-      "#{basename}_#{thumbnail}#{ext}"
+      "#{basename}_#{thumbnail}.jpg"
     end
 
     def public_filename_without_creation(thumbnail = nil)
@@ -35,7 +35,7 @@ module Attacheable
     end
     
     def sanitize_filename(filename)
-      returning filename.strip do |name|
+      returning filename.to_s.strip do |name|
         # NOTE: File.basename doesn't work right with Windows paths on Unix
         # get only the filename, not the whole path
         name.gsub! /^.*(\\|\/)/, ''

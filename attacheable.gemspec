@@ -22,6 +22,21 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--main", "README"]
   s.extra_rdoc_files = ["README"]
   s.has_rdoc          = false
-  s.files = Dir["**/*.rb"].to_a + Dir["test/fixtures/*"].to_a
+  s.files = ["init.rb",
+             "attacheable.gemspec",
+             "Rakefile",
+             "lib/attacheable.rb",
+             "lib/attacheable/file_naming.rb",
+             "lib/attacheable/photo_handler.rb",
+             "lib/attacheable/uploading.rb",
+             "test/test_helper.rb",
+             "test/attacheable_test.rb",
+             "test/fixtures/test.doc",
+             "test/fixtures/wrong_type",
+             "test/fixtures/test.psd",
+             "test/fixtures/test.mov",
+             "README",
+             "README.ru"
+             ]
 end
 

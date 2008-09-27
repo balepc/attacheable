@@ -4,7 +4,6 @@ Gem::Specification.new do |s|
   s.date    = '2009-09-27'
   s.summary = 'Library to handle image uploads'
   s.email   = "max@maxidoors.ru"
-  s.autorequire = 'attacheable'
   s.author  = "Max Lapshin"
   s.description = "Fork of attachment_fu. It differs in following ways:
 
@@ -20,9 +19,9 @@ Gem::Specification.new do |s|
 
   5. create only one row in table for one image. No separate rows for each thumbnail."
   s.rubyforge_project = "attacheable"
-  s.rdoc_options = ["--main", "README.txt"]
-  s.extra_rdoc_files = ["History.txt", "Manifest.txt", "README.txt"]
+  s.rdoc_options = ["--main", "README"]
+  s.extra_rdoc_files = ["README"]
   s.has_rdoc          = false
-  s.files = FileList["**/**"].exclude(".git").to_a
+  s.files = Dir["**/*.rb"].to_a
 end
 

@@ -38,10 +38,16 @@ module Attacheable
         if file_type
           self.width = width if(respond_to?(:width=))
           self.height = height if(respond_to?(:height=))
-          self.content_type = "image/#{file_type}"
-          file_type
+          self.content_type ||= file_type
         end
       end
+      if content_type =~ /video\//
+        width, height = identify_video_properties(@tempfile.path)
+        self.width = width
+        self.height = height
+        self.content_type ||= "application/octet-stream"
+      end
+      content_type
     end
     
     def identify_image_properties(path)
@@ -52,10 +58,21 @@ module Attacheable
         output = `identify "#{path}"`
       end
       if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-        file_type = match_data[1].to_s.downcase
+        file_type = "image/#{match_data[1].to_s.downcase}"
         width = match_data[2]
         height = match_data[3]
         return [file_type, width, height]
+      end
+    end
+    
+    def identify_video_properties(path)
+      return [nil, nil] if path.blank?
+      ouput = nil
+      silence_stderr do 
+        output = `ffmpeg -i "#{path}"`
+      end
+      if output && match_data = /Video: (\w+), (\d+)x(\d+)/.match(output)
+        return [match_data[2], match_data[3]]
       end
     end
     

@@ -22,6 +22,6 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--main", "README"]
   s.extra_rdoc_files = ["README"]
   s.has_rdoc          = false
-  s.files = Dir["**/*.rb"].to_a
+  s.files = Dir["**/*.rb"].to_a + Dir["test/fixtures/*"].to_a
 end
 

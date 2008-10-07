@@ -1,12 +1,6 @@
 require File.dirname(__FILE__)+"/attacheable/file_naming"
 require File.dirname(__FILE__)+"/attacheable/uploading"
 require 'net/http'
-
-begin
-  require 'mime/types'
-rescue LoadError
-end
-
 class ActiveRecord::Base
   #
   # In model write has_attachment (conflicts with acts_as_attachment) with options:
@@ -84,7 +78,7 @@ module Attacheable
   end
 
 
-  def destroy_thumbnails(thumbnail = nil)
+  def destroy_thumbnails!(thumbnail = nil)
     return if filename.blank?
     if thumbnail
       FileUtils.rm_f(full_filename_without_creation(thumbnail))
@@ -115,7 +109,7 @@ module Attacheable
     def regenerate_thumbnails!(thumbnail = nil)
       connection.select_values(send(:construct_finder_sql, :select => "id")).each do |object_id|
         object = find_by_id(object_id)
-        object.destroy_thumbnails(thumbnail)
+        object.destroy_thumbnails!(thumbnail)
       end
     end
   
@@ -131,6 +125,16 @@ module Attacheable
       end
       [object, nil]
     end
+
+    def image_width(filename)
+      `identify -format "%w" "#{filename}"`.to_i
+    end
+
+    def image_height(filename)
+      `identify -format "%h" "#{filename}"`.to_i
+    end
+
+    #module_function :image_width, :image_height
   end
 
   def attachment_options #:nodoc:
@@ -159,15 +163,15 @@ module Attacheable
   # If options[:autocreate] is set to true, this method will autogenerate thumbnail
   def public_filename(thumbnail = nil)
     return "" if filename.blank?
-    full_filename(thumbnail).gsub %r(^#{Regexp.escape(base_path)}), ''
+    (full_filename(thumbnail) || "").gsub %r(^#{Regexp.escape(base_path)}), ''
   end
-
+  
   def image_width(thumbnail = nil)
-    `identify -format "%w" "#{full_filename(thumbnail)}"`.to_i
+    self.class.image_width(full_filename(thumbnail))
   end
 
   def image_height(thumbnail = nil)
-    `identify -format "%h" "#{full_filename(thumbnail)}"`.to_i
+    self.class.image_height(full_filename(thumbnail))
   end
 
   protected
@@ -182,8 +186,8 @@ module Attacheable
     thumbnail_path = full_filename_without_creation(thumbnail)
     return thumbnail_path unless thumbnail
     (return thumbnail_path if File.exists?(thumbnail_path)) unless attachment_options[:force_autocreate]
-    #return nil unless /image\//.match(content_type)
-    if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym)
+    return nil unless /image\//.match(content_type)
+    if attachment_options[:croppable_thumbnails].include?(thumbnail.to_sym) && !attachment_options[:thumbnails][thumbnail.to_sym].blank?
       crop_and_thumbnail(thumbnail, thumbnail_path)
     else
       create_thumbnail(thumbnail, thumbnail_path)
@@ -197,24 +201,17 @@ module Attacheable
   end
 
   def create_thumbnail(thumbnail, thumbnail_path)
-    source = thumbnail_source_filename(thumbnail)
-    return nil unless File.exists?(source)
-    return nil unless attachment_options[:thumbnails][thumbnail.to_sym]
-    if content_type =~ /video\// && source == full_filename
-      raw_file = File.dirname(source) + "raw.jpg"
-      `ffmpeg -i #{full_filename} -vframes 1 -f image2 -y -an -ss 00:00:00 -t 00:00:01 -r 1 #{raw_file} 2>&1`
-      source = raw_file
-    end
+    return nil unless File.exists?(full_filename)
     if attachment_options[:thumbnails][thumbnail.to_sym].blank?
-      `convert "#{source}"[0] -colorspace rgb "#{thumbnail_path}"`
+      `convert "#{thumbnail_source_filename(thumbnail)}" -colorspace rgb "#{thumbnail_path}"`
     else
-      `convert "#{source}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" -colorspace rgb "#{thumbnail_path}"`
+      `convert "#{thumbnail_source_filename(thumbnail)}" -thumbnail "#{attachment_options[:thumbnails][thumbnail.to_sym]}" -colorspace rgb "#{thumbnail_path}"`
     end
     thumbnail_path
   end
 
   def crop_and_thumbnail(thumbnail, thumbnail_path)
-    file_type, width, height = identify_image_properties(thumbnail_source_filename(thumbnail))
+    file_type, width, height = identify_image_properties(full_filename)
     album_x, album_y = attachment_options[:thumbnails][thumbnail.to_sym].split("x").map &:to_i
     return nil unless album_x && album_y && width && height
     scale_x = width.to_f / album_x
@@ -227,7 +224,7 @@ module Attacheable
       shift_x, shift_y = 0, (height.to_i - y)/2
     end
 #    FileUtils.cp(full_filename_without_creation, thumbnail_path)
-    `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{thumbnail_source_filename(thumbnail)}" "#{thumbnail_path}"`
+    `convert -crop #{x}x#{y}+#{shift_x}+#{shift_y} "#{full_filename}" "#{thumbnail_path}"`
     `mogrify  -geometry #{album_x}x#{album_y} "#{thumbnail_path}"`
     thumbnail_path
   end

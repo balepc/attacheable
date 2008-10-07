@@ -1,5 +1,5 @@
 require File.dirname(__FILE__)+'/test_helper'
-
+require 'mime/types'
 ActiveRecord::Base.establish_connection(:adapter => "sqlite3", :dbfile => ":memory:")
 
 def setup_db

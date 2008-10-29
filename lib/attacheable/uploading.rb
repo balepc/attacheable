@@ -33,7 +33,13 @@ module Attacheable
       return unless @tempfile
       self.content_type = @tempfile.content_type if @tempfile.respond_to?(:content_type)
 
-      if true || content_type.blank? || content_type =~ /image\// || content_type == "application/octet-stream"
+      if defined?(MIME) && defined?(MIME::Types) &&
+          (content_type.blank? || content_type == "application/octet-stream")
+        mime = MIME::Types.type_for(filename).first
+        self.content_type = mime.simplified if mime
+      end
+
+      if content_type.blank? || content_type =~ /image\// || content_type == "application/octet-stream"
         file_type, width, height = identify_image_properties(@tempfile.path)
         if file_type
           self.width = width if(respond_to?(:width=))
@@ -74,7 +80,8 @@ module Attacheable
     def save_to_storage
       if @save_new_attachment
         old_filename = filename
-        self.class.update_all({:filename => "#{id}.jpg"}, {:id => id})
+        ext = filename.index(".") ? filename.split(".").last : "jpg"
+        self.class.update_all({:filename => "#{id}.#{ext}"}, {:id => id})
         reload
         FileUtils.mkdir_p(File.dirname(full_filename))
         FileUtils.cp(@tempfile.path, full_filename)

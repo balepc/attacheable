@@ -32,27 +32,16 @@ module Attacheable
     def identify_uploaded_file_type
       return unless @tempfile
       self.content_type = @tempfile.content_type if @tempfile.respond_to?(:content_type)
-      
-      if defined?(MIME) && defined?(MIME::Types) &&
-          (content_type.blank? || content_type == "application/octet-stream")
-        mime = MIME::Types.type_for(filename).first
-        self.content_type = mime.simplified if mime
-      end
 
-      if content_type =~ /image\//
+      if true || content_type.blank? || content_type =~ /image\// || content_type == "application/octet-stream"
         file_type, width, height = identify_image_properties(@tempfile.path)
         if file_type
           self.width = width if(respond_to?(:width=))
           self.height = height if(respond_to?(:height=))
-          self.content_type = file_type
+          self.content_type = "image/#{file_type}"
+          file_type
         end
       end
-      if content_type =~ /video\//
-        width, height = identify_video_properties(@tempfile.path)
-        self.width = width if(respond_to?(:width=))
-        self.height = height if(respond_to?(:height=))
-      end
-      content_type
     end
     
     def identify_image_properties(path)
@@ -63,31 +52,17 @@ module Attacheable
         output = `identify "#{path}"`
       end
       if output && match_data = / (\w+) (\d+)x(\d+) /.match(output)
-        file_type = "image/#{match_data[1].to_s.downcase}"
-        width = match_data[2].to_i
-        height = match_data[3].to_i
+        file_type = match_data[1].to_s.downcase
+        width = match_data[2]
+        height = match_data[3]
         return [file_type, width, height]
-      end
-    end
-    
-    def identify_video_properties(path)
-      return [nil, nil] if path.blank?
-      output = nil
-      silence_stderr do 
-        output = `ffmpeg -i "#{path}" 2>&1`
-      end
-      output = output && output.split("\n").grep(/Video:/).first
-      if output && match_data = /Video: (.+), (\d+)x(\d+)/.match(output)
-        return [match_data[2].to_i, match_data[3].to_i]
       end
     end
     
     def accepts_file_type_for_upload?(file_type)
       return false unless @tempfile
-      return true if attachment_options[:valid_filetypes].blank?
       return true if attachment_options[:valid_filetypes] == :all
-      return true if attachment_options[:valid_filetypes].include?(file_type.to_s.split("/").last)
-      false
+      return true if attachment_options[:valid_filetypes].include?(file_type)
     end
     
     def handle_uploaded_file
@@ -98,6 +73,9 @@ module Attacheable
     # Saves the file to the file system
     def save_to_storage
       if @save_new_attachment
+        old_filename = filename
+        self.class.update_all({:filename => "#{id}.jpg"}, {:id => id})
+        reload
         FileUtils.mkdir_p(File.dirname(full_filename))
         FileUtils.cp(@tempfile.path, full_filename)
         File.chmod(0644, full_filename)

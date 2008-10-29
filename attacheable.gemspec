@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name = 'attacheable'
-  s.version = '1.5'
-  s.date    = '2009-09-27'
+  s.version = '1.6'
+  s.date    = '2009-10-07'
   s.summary = 'Library to handle image uploads'
   s.email   = "max@maxidoors.ru"
   s.author  = "Max Lapshin"

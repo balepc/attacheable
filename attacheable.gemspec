@@ -17,7 +17,8 @@ Gem::Specification.new do |s|
 
   4. works only with file system (and does it better, than attachment_fu)
 
-  5. create only one row in table for one image. No separate rows for each thumbnail."
+  5. create only one row in table for one image. No separate rows for each thumbnail.
+"
   s.rubyforge_project = "attacheable"
   s.rdoc_options = ["--main", "README"]
   s.extra_rdoc_files = ["README"]
